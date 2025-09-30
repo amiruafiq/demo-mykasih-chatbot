@@ -1,38 +1,163 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Sara FAQ Demo</title>
+  <meta charset="UTF-8">
+  <title>Sara.gov.my FAQ Chatbot (Demo)</title>
   <style>
-    body { font-family: Arial; max-width: 600px; margin: 20px auto; }
-    #chat { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: scroll; }
-    .msg { margin: 8px 0; }
-    .user { font-weight: bold; }
-    .bot { color: green; }
+    /* ---- General Layout ---- */
+    body {
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: #f4f7fb;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .chat-container {
+      width: 400px;
+      height: 600px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ---- Header ---- */
+    .chat-header {
+      background: #2a4d8f;
+      color: #fff;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    /* ---- Messages ---- */
+    .chat-box {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background: #f9fafc;
+    }
+    .message {
+      margin: 12px 0;
+      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+    .user {
+      align-self: flex-end;
+      background: #2a4d8f;
+      color: #fff;
+      border-bottom-right-radius: 2px;
+    }
+    .bot {
+      align-self: flex-start;
+      background: #e5e9f0;
+      color: #333;
+      border-bottom-left-radius: 2px;
+    }
+    .citation {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    /* ---- Input Area ---- */
+    .chat-input {
+      display: flex;
+      border-top: 1px solid #ddd;
+    }
+    .chat-input input {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      outline: none;
+      font-size: 14px;
+    }
+    .chat-input button {
+      background: #2a4d8f;
+      border: none;
+      color: #fff;
+      padding: 0 20px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .chat-input button:hover {
+      background: #1d3570;
+    }
   </style>
 </head>
 <body>
-  <h2>Sara.gov.my FAQ Chatbot (Demo)</h2>
-  <div id="chat"></div>
-  <input type="text" id="question" placeholder="Ask me anything..." style="width:80%">
-  <button onclick="ask()">Send</button>
+  <div class="chat-container">
+    <div class="chat-header">Sara.gov.my FAQ Chatbot (Demo)</div>
+    <div id="chatBox" class="chat-box"></div>
+    <div class="chat-input">
+      <input id="userInput" type="text" placeholder="Type your question...">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
 
   <script>
-    async function ask() {
-      const q = document.getElementById("question").value;
-      document.getElementById("chat").innerHTML += `<div class='msg user'>You: ${q}</div>`;
+    const API_URL = "https://hnfdv6u4lr3phgoayvj2jxkoa40vrpwf.lambda-url.us-east-1.on.aws/"; // replace with your deployed API endpoint
 
-      const res = await fetch("YOUR_API_GATEWAY_URL", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q })
-      });
-      const data = await res.json();
-      const answer = data.answer;
+    function appendMessage(text, sender, citations = []) {
+      const chatBox = document.getElementById("chatBox");
+      const msg = document.createElement("div");
+      msg.classList.add("message", sender);
+      msg.innerHTML = text;
 
-      document.getElementById("chat").innerHTML += `<div class='msg bot'>Bot: ${answer}</div>`;
-      document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
-      document.getElementById("question").value = "";
+      if (citations.length > 0) {
+        const citeDiv = document.createElement("div");
+        citeDiv.className = "citation";
+        citeDiv.innerHTML = "Sources: " + citations.map(c => c.title || c.uri).join(", ");
+        msg.appendChild(citeDiv);
+      }
+
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
+
+    async function sendMessage() {
+      const input = document.getElementById("userInput");
+      const text = input.value.trim();
+      if (!text) return;
+
+      appendMessage(text, "user");
+      input.value = "";
+
+      appendMessage("Typing...", "bot"); // temporary loading state
+      const chatBox = document.getElementById("chatBox");
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, model: "claude" }) // default to Claude
+        });
+        const data = await res.json();
+
+        // remove "Typing..."
+        chatBox.removeChild(chatBox.lastChild);
+
+        appendMessage(data.answer || "Sorry, I couldn't find an answer.", "bot", data.citations || []);
+      } catch (err) {
+        chatBox.removeChild(chatBox.lastChild);
+        appendMessage("⚠️ Error: " + err.message, "bot");
+      }
+    }
+
+    // Allow Enter key to send
+    document.getElementById("userInput").addEventListener("keypress", function (e) {
+      if (e.key === "Enter") sendMessage();
+    });
   </script>
 </body>
 </html>
