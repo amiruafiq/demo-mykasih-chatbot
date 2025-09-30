@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sara FAQ Demo</title>
+  <style>
+    body { font-family: Arial; max-width: 600px; margin: 20px auto; }
+    #chat { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: scroll; }
+    .msg { margin: 8px 0; }
+    .user { font-weight: bold; }
+    .bot { color: green; }
+  </style>
+</head>
+<body>
+  <h2>Sara.gov.my FAQ Chatbot (Demo)</h2>
+  <div id="chat"></div>
+  <input type="text" id="question" placeholder="Ask me anything..." style="width:80%">
+  <button onclick="ask()">Send</button>
+
+  <script>
+    async function ask() {
+      const q = document.getElementById("question").value;
+      document.getElementById("chat").innerHTML += `<div class='msg user'>You: ${q}</div>`;
+
+      const res = await fetch("YOUR_API_GATEWAY_URL", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q })
+      });
+      const data = await res.json();
+      const answer = data.answer;
+
+      document.getElementById("chat").innerHTML += `<div class='msg bot'>Bot: ${answer}</div>`;
+      document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
+      document.getElementById("question").value = "";
+    }
+  </script>
+</body>
+</html>
