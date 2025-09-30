@@ -42,6 +42,8 @@
       padding: 16px;
       overflow-y: auto;
       background: #f9fafc;
+      display: flex;
+      flex-direction: column;
     }
     .message {
       margin: 12px 0;
@@ -106,23 +108,37 @@
   </div>
 
   <script>
-    const API_URL = "https://hnfdv6u4lr3phgoayvj2jxkoa40vrpwf.lambda-url.us-east-1.on.aws/"; // replace with your deployed API endpoint
+    // Replace this with your Lambda Function URL
+    const API_URL = "https://hnfdv6u4lr3phgoayvj2jxkoa40vrpwf.lambda-url.us-east-1.on.aws/";
 
-    function appendMessage(text, sender, citations = []) {
+    function appendMessage(text, sender, citations = [], typing = false) {
       const chatBox = document.getElementById("chatBox");
       const msg = document.createElement("div");
       msg.classList.add("message", sender);
-      msg.innerHTML = text;
 
-      if (citations.length > 0) {
-        const citeDiv = document.createElement("div");
-        citeDiv.className = "citation";
-        citeDiv.innerHTML = "Sources: " + citations.map(c => c.title || c.uri).join(", ");
-        msg.appendChild(citeDiv);
+      if (!typing) {
+        msg.innerHTML = text;
+        if (citations.length > 0) {
+          const citeDiv = document.createElement("div");
+          citeDiv.className = "citation";
+          citeDiv.innerHTML = "Sources: " + citations.map(c => c.title || c.uri).join(", ");
+          msg.appendChild(citeDiv);
+        }
+      } else {
+        msg.innerHTML = ""; // empty, we will "type" into this
       }
 
       chatBox.appendChild(msg);
       chatBox.scrollTop = chatBox.scrollHeight;
+      return msg;
+    }
+
+    async function typeText(element, text, speed = 30) {
+      for (let i = 0; i < text.length; i++) {
+        element.innerHTML += text.charAt(i);
+        element.parentElement.scrollTop = element.parentElement.scrollHeight;
+        await new Promise(r => setTimeout(r, speed));
+      }
     }
 
     async function sendMessage() {
@@ -133,24 +149,29 @@
       appendMessage(text, "user");
       input.value = "";
 
-      appendMessage("Typing...", "bot"); // temporary loading state
-      const chatBox = document.getElementById("chatBox");
+      // placeholder bot message
+      const typingMsg = appendMessage("", "bot", [], true);
 
       try {
         const res = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text, model: "claude" }) // default to Claude
+          body: JSON.stringify({ message: text, model: "claude" })
         });
         const data = await res.json();
 
-        // remove "Typing..."
-        chatBox.removeChild(chatBox.lastChild);
+        // type out the response
+        await typeText(typingMsg, data.answer || "Sorry, I couldn't find an answer.");
 
-        appendMessage(data.answer || "Sorry, I couldn't find an answer.", "bot", data.citations || []);
+        // add citations after typing finishes
+        if (data.citations && data.citations.length > 0) {
+          const citeDiv = document.createElement("div");
+          citeDiv.className = "citation";
+          citeDiv.innerHTML = "Sources: " + data.citations.map(c => c.title || c.uri).join(", ");
+          typingMsg.appendChild(citeDiv);
+        }
       } catch (err) {
-        chatBox.removeChild(chatBox.lastChild);
-        appendMessage("⚠️ Error: " + err.message, "bot");
+        typingMsg.innerHTML = "⚠️ Error: " + err.message;
       }
     }
 
