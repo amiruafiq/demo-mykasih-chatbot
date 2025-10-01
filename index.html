@@ -54,6 +54,7 @@
       line-height: 1.5;
       word-wrap: break-word;
       font-size: 14px;
+      position: relative;
     }
     .user {
       align-self: flex-end;
@@ -68,10 +69,13 @@
       border-bottom-left-radius: 4px;
       border: 1px solid #d6dbee;
     }
-    .citation {
+    .citation, .latency {
       font-size: 12px;
       color: #777;
       margin-top: 6px;
+    }
+    .latency {
+      font-style: italic;
     }
 
     /* Input */
@@ -114,7 +118,6 @@
   </div>
 
   <script>
-    // Replace with your Lambda URL
     const API_URL = "https://hnfdv6u4lr3phgoayvj2jxkoa40vrpwf.lambda-url.us-east-1.on.aws/";
 
     function appendMessage(text, sender, citations = [], typing = false) {
@@ -131,7 +134,7 @@
           msg.appendChild(citeDiv);
         }
       } else {
-        msg.innerHTML = ""; // we'll type here
+        msg.innerHTML = ""; // placeholder for typing
       }
 
       chatBox.appendChild(msg);
@@ -167,11 +170,19 @@
 
         await typeText(typingMsg, data.answer || "Maaf, saya tiada jawapan.");
 
+        // Add citations + latency info
         if (data.citations && data.citations.length > 0) {
           const citeDiv = document.createElement("div");
           citeDiv.className = "citation";
           citeDiv.innerHTML = "Sources: " + data.citations.map(c => c.title || c.uri).join(", ");
           typingMsg.appendChild(citeDiv);
+        }
+
+        if (data.latency_ms) {
+          const latencyDiv = document.createElement("div");
+          latencyDiv.className = "latency";
+          latencyDiv.innerHTML = `⚡ Responded in ${data.latency_ms} ms`;
+          typingMsg.appendChild(latencyDiv);
         }
       } catch (err) {
         typingMsg.innerHTML = "⚠️ Error: " + err.message;
